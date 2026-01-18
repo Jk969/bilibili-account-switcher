@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>B站账号切换</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h2>B站账号切换器</h2>
+      <button id="refreshBtn" title="刷新列表" class="icon-btn">↻</button>
+    </header>
+
+    <div id="accountList" class="account-list">
+      <!-- 账号列表动态插入 -->
+      <div class="empty-tip">暂无账号，请登录B站后添加</div>
+    </div>
+
+    <footer>
+      <button id="addCurrentBtn" class="primary-btn">添加当前账号</button>
+      <button id="loginNewBtn" class="secondary-btn">登录新账号</button>
+      <div class="hint-text">
+        注意：添加多账号时，请点“登录新账号”清除本地状态，<span class="warning">切勿在网页点击退出</span>，否则旧账号Cookie会失效。
+      </div>
+    </footer>
+    
+    <div id="statusMsg" class="status-msg"></div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

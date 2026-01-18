@@ -1,0 +1,188 @@
+body {
+  width: 320px;
+  margin: 0;
+  padding: 0;
+  font-family: "Microsoft YaHei", sans-serif;
+  background-color: #f6f7f8;
+  color: #333;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 450px;
+}
+
+header {
+  padding: 10px 15px;
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #00a1d6; /* B站蓝 */
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+}
+
+.icon-btn:hover {
+  color: #00a1d6;
+}
+
+.account-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.account-item {
+  background: #fff;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.account-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.account-item.active {
+  border-color: #00a1d6;
+  background-color: #f0faff;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+}
+
+.info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.name {
+  font-weight: bold;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uid {
+  font-size: 12px;
+  color: #999;
+}
+
+.actions {
+  display: flex;
+  gap: 5px;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+}
+
+.delete-btn:hover {
+  color: #ff4d4f;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #999;
+  margin-top: 50px;
+  font-size: 14px;
+}
+
+footer {
+  padding: 10px 15px;
+  background-color: #fff;
+  border-top: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.primary-btn {
+  background-color: #00a1d6;
+  color: #fff;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.primary-btn:hover {
+  background-color: #00b5e5;
+}
+
+.secondary-btn {
+  background-color: #fff;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+  border-color: #999;
+  color: #333;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.4;
+  background-color: #fffbeb;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #f0e6cf;
+}
+
+.warning {
+  color: #d9534f;
+  font-weight: bold;
+}
+
+.status-msg {
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+  height: 20px;
+  line-height: 20px;
+  background: #f0f0f0;
+}
+
+.status-success { color: green; }
+.status-error { color: red; }
