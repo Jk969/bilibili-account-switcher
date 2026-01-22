@@ -5,7 +5,8 @@ import {
   fetchUserInfo,
   saveAccount,
   getAccounts,
-  deleteAccount
+  deleteAccount,
+  updateCurrentAccountCookies
 } from './utils.js';
 
 // 监听来自 content script 或 popup 的消息
@@ -36,10 +37,17 @@ async function handleMessage(request) {
       return { success: true };
       
     case 'SWITCH_ACCOUNT':
+      // 关键修复：切换前自动更新当前账号的 Cookies 到 storage
+      // 防止因使用期间 Cookie 变化导致切回时失效
+      await updateCurrentAccountCookies();
+      
       await setBilibiliCookies(request.account.cookies);
       return { success: true };
       
     case 'LOGIN_NEW':
+      // 登录新账号前也保存当前状态
+      await updateCurrentAccountCookies();
+      
       await clearBilibiliCookies();
       return { success: true };
       

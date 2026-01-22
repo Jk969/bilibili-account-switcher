@@ -135,6 +135,42 @@ export async function deleteAccount(mid) {
   }
 }
 
+/**
+ * 尝试更新当前登录账号的 Cookies 到 storage
+ * 用于在切换账号或清除 Cookies 前，保存最新的 Cookie 状态
+ * 防止因 Cookie 轮转/过期导致切回旧账号失效
+ */
+export async function updateCurrentAccountCookies() {
+  try {
+    // 1. 获取当前所有 Cookies
+    const cookies = await getBilibiliCookies();
+    
+    // 2. 查找关键的 DedeUserID Cookie (它是用户 ID)
+    const midCookie = cookies.find(c => c.name === 'DedeUserID');
+    
+    if (midCookie) {
+      const mid = midCookie.value;
+      
+      // 3. 获取已存储的账号列表
+      const { accounts } = await getStorage("accounts");
+      
+      // 4. 如果该账号已存在于列表中，则更新其 Cookies
+      if (accounts && accounts[mid]) {
+        accounts[mid].cookies = cookies;
+        accounts[mid].timestamp = Date.now(); // 更新时间戳
+        
+        // 5. 写回 storage
+        await setStorage({ accounts });
+        console.log(`[AutoSave] Updated cookies for account: ${mid}`);
+        return true;
+      }
+    }
+  } catch (error) {
+    console.error("Auto update account failed:", error);
+  }
+  return false;
+}
+
 // Storage 辅助函数
 function getStorage(key) {
   return new Promise(resolve => chrome.storage.local.get(key, resolve));
