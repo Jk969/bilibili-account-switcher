@@ -2,19 +2,44 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>B站账号切换</title>
+  <title>账号切换</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h2>B站账号切换器</h2>
-      <button id="refreshBtn" title="刷新列表" class="icon-btn">↻</button>
+      <h2 id="popupTitle">账号切换器</h2>
+      <div class="header-actions">
+        <button id="refreshBtn" title="刷新列表" class="icon-btn">↻</button>
+        <button id="settingsBtn" title="设置" class="icon-btn">⚙</button>
+      </div>
     </header>
 
     <div id="accountList" class="account-list">
       <!-- 账号列表动态插入 -->
-      <div class="empty-tip">暂无账号，请登录B站后添加</div>
+      <div class="empty-tip">暂无账号，请登录后添加</div>
+    </div>
+
+    <div id="settingsPanel" class="settings-panel" style="display: none;">
+      <div class="settings-header">
+        <h3>设置</h3>
+        <button id="settingsCloseBtn" class="icon-btn">×</button>
+      </div>
+      <div class="settings-content">
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="globalFloatingToggle"> 全局启用网页悬浮窗
+          </label>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="siteFloatingToggle"> 在当前网站启用悬浮窗
+          </label>
+        </div>
+        <div class="settings-tip">
+          提示：悬浮窗默认只在“已保存有账号”的网站上显示，以避免在其他网页浏览时产生视觉干扰。
+        </div>
+      </div>
     </div>
 
     <footer>

@@ -9,7 +9,7 @@
 .bili-switcher-icon {
   width: 48px;
   height: 48px;
-  background: #00a1d6;
+  background: var(--switcher-accent-color, #00a1d6);
   border-radius: 50%;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   cursor: pointer;
@@ -24,7 +24,7 @@
 
 .bili-switcher-icon:hover {
   transform: scale(1.1);
-  background: #00b5e5;
+  filter: brightness(1.08);
 }
 
 .bili-switcher-panel {
@@ -84,7 +84,7 @@
 }
 
 .bili-switcher-item.active {
-  background: #e6f7ff;
+  background: color-mix(in srgb, var(--switcher-accent-color, #00a1d6) 12%, white);
 }
 
 .bili-switcher-avatar {
@@ -92,6 +92,17 @@
   height: 36px;
   border-radius: 50%;
   margin-right: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.bili-switcher-avatar-fallback {
+  background: var(--switcher-accent-color, #00a1d6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
 }
 
 .bili-switcher-info {
@@ -130,7 +141,7 @@
 }
 
 .bili-switcher-btn-primary {
-  background: #00a1d6;
+  background: var(--switcher-accent-color, #00a1d6);
   color: white;
 }
 
@@ -152,4 +163,46 @@
 
 .bili-switcher-close:hover {
   color: #666;
+}
+
+.bili-switcher-empty {
+  padding: 10px;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+}
+
+/* Actions and Edit button in Floating panel */
+.bili-switcher-actions {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.bili-switcher-edit-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 13px;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bili-switcher-edit-btn:hover {
+  color: var(--switcher-accent-color, #00a1d6);
+}
+
+.bili-switcher-edit-input {
+  width: 100%;
+  padding: 3px 5px;
+  font-size: 13px;
+  font-weight: bold;
+  border: 1px solid var(--switcher-accent-color, #00a1d6);
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
 }
