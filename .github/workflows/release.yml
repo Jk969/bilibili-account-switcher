@@ -1,0 +1,51 @@
+name: Release
+
+# 打 v* 格式的 tag 时自动打包并发布 GitHub Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # 创建 Release / 上传 asset 需要
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from manifest.json
+        id: ver
+        run: |
+          VERSION=$(node -e "console.log(require('./manifest.json').version)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected manifest version: $VERSION"
+
+      # 校验 git tag 必须等于 v + manifest 版本号，避免打错 tag
+      - name: Verify tag matches version
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          if [ "${{ github.ref_name }}" != "v${VERSION}" ]; then
+            echo "::error::Git tag '${{ github.ref_name }}' 必须等于 'v' + manifest 版本号（期望 v${VERSION}）"
+            exit 1
+          fi
+
+      # 白名单打包：只复制运行所需文件，杜绝 .git/.claude/README 等进包
+      - name: Package extension
+        run: |
+          mkdir -p dist/pkg
+          cp manifest.json *.js *.css *.html dist/pkg/
+          cp -r assets dist/pkg/
+          ( cd dist/pkg && zip -r "../web-account-switcher-v${{ steps.ver.outputs.version }}.zip" . )
+          echo "=== packaged ===" && ls -la dist/*.zip
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            "dist/web-account-switcher-v${{ steps.ver.outputs.version }}.zip" \
+            --title "v${{ steps.ver.outputs.version }}" \
+            --generate-notes
