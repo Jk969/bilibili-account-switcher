@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "多站点账号切换助手",
+  "name": "账号切换助手",
   "version": "1.2",
   "description": "支持多站点账号一键切换及账号名称修改",
   "icons": {
