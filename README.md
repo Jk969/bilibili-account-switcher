@@ -43,7 +43,7 @@ Open the extension on any http/https site and it auto-generates a site config ba
 1. Open Edge's extension management page `edge://extensions/`, or Chrome's `chrome://extensions/`.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked**.
-4. Select this project's folder, `bilibili-account-switcher`.
+4. Select this project's folder, `web-account-switcher`.
 5. Once installed, the extension icon appears in the toolbar — click it to start.
 
 ---
@@ -108,7 +108,7 @@ The extension's core is **reading / writing / clearing cookies**:
 ## Project Structure
 
 ```
-bilibili-account-switcher/
+web-account-switcher/
 ├── manifest.json     # Extension config (MV3, permissions: cookies / storage / tabs)
 ├── background.js     # Service Worker, handles all business messages
 ├── utils.js          # Core utility library: site config, cookie ops, account management

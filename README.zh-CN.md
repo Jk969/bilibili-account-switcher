@@ -43,7 +43,7 @@
 1. 打开 Edge 扩展管理页 `edge://extensions/`，或 Chrome 的 `chrome://extensions/`。
 2. 打开**「开发人员模式 / 开发者模式」**开关。
 3. 点击**「加载解压缩的扩展 / Load unpacked」**。
-4. 选择本项目文件夹 `bilibili-account-switcher`。
+4. 选择本项目文件夹 `web-account-switcher`。
 5. 安装完成后，工具栏会出现插件图标，点击即可使用。
 
 ---
@@ -108,7 +108,7 @@
 ## 项目结构
 
 ```
-bilibili-account-switcher/
+web-account-switcher/
 ├── manifest.json     # 扩展配置（MV3，权限：cookies / storage / tabs）
 ├── background.js     # Service Worker，处理所有业务消息
 ├── utils.js          # 核心工具库：站点配置、Cookie 操作、账号管理
