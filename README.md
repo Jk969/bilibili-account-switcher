@@ -1,144 +1,146 @@
-# 多站点账号切换助手
+# Multi-Site Account Switcher
 
-一个基于 Manifest V3 的 Edge / Chrome 浏览器扩展，让你在**多个网站的多个账号**之间一键切换。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-内置 Bilibili、ChatGPT 的深度支持（可读取用户名、头像、UID），同时对任意其他网站提供基于 Cookie 的通用切换能力。所有数据仅保存在本地浏览器，不上传任何服务器。
+A Manifest V3 Edge / Chrome browser extension that lets you switch between **multiple accounts across multiple websites** with a single click.
 
-> 当前版本：**v1.2**
+It ships with deep support for Bilibili and ChatGPT (reading username, avatar, and UID), while offering generic cookie-based switching for any other website. All data stays in your local browser — nothing is uploaded to any server.
 
----
-
-## 功能特点
-
-- **一键切换**：点击账号卡片即写入对应 Cookie 并刷新页面，秒切回目标账号。
-- **多站点支持**：内置 Bilibili、ChatGPT；其它网站自动识别并按 Cookie 切换。
-- **账号重命名**：每个账号都可自定义显示名称，方便区分。
-- **自动获取信息**：自动抓取当前登录账号的用户信息和 Cookie。
-- **防 Cookie 失效**：切换或登录新号前，会自动把当前账号的最新 Cookie 回写保存。
-- **安全存储**：账号数据仅存于 `chrome.storage.local`，代码开源，无任何后端。
-- **双入口**：既可用工具栏弹窗，也可用网页右下角的悬浮窗。
-- **悬浮窗可控**：悬浮窗可全局 / 按站点开关，支持拖拽，默认只在已保存账号的站点出现。
+> Current version: **v1.2**
 
 ---
 
-## 支持站点
+## Features
 
-### 内置站点（深度支持）
+- **One-click switching**: Click an account card to write its cookies and reload the page — you're back on the target account in seconds.
+- **Multi-site support**: Bilibili and ChatGPT built in; other sites are auto-detected and switched by cookie.
+- **Account renaming**: Every account can be given a custom display name for easy distinction.
+- **Auto info fetch**: Automatically grabs the currently logged-in account's user info and cookies.
+- **Cookie-freshness protection**: Before switching or logging into a new account, the current account's latest cookies are written back and saved.
+- **Secure storage**: Account data lives only in `chrome.storage.local`. The code is open source with no backend whatsoever.
+- **Dual entry points**: Use the toolbar popup or the floating panel in the bottom-right corner of any page.
+- **Controllable floating panel**: The floating panel can be toggled globally or per-site, supports dragging, and by default appears only on sites with saved accounts.
 
-| 站点 | 域名 | 信息来源 |
+---
+
+## Supported Sites
+
+### Built-in sites (deep support)
+
+| Site | Domain | Info source |
 | --- | --- | --- |
-| Bilibili | `bilibili.com` | `api.bilibili.com/x/web-interface/nav`（用户名、UID、头像） |
-| ChatGPT | `chatgpt.com`、`chat.openai.com` | `chatgpt.com/backend-api/me`（用户名、邮箱、头像） |
+| Bilibili | `bilibili.com` | `api.bilibili.com/x/web-interface/nav` (username, UID, avatar) |
+| ChatGPT | `chatgpt.com`, `chat.openai.com` | `chatgpt.com/backend-api/me` (username, email, avatar) |
 
-### 任意其他网站（通用支持）
+### Any other website (generic support)
 
-在任意 http/https 网站打开插件，扩展会自动按主域名生成一个站点配置，并按 Cookie 完成账号的保存与切换。这类站点没有用户名/头像来源，会基于 `session`/`auth`/`token`/`cf_clearance` 等 Cookie 生成一个**指纹 ID** 来标识账号。
-
----
-
-## 安装方法
-
-1. 打开 Edge 扩展管理页 `edge://extensions/`，或 Chrome 的 `chrome://extensions/`。
-2. 打开**「开发人员模式 / 开发者模式」**开关。
-3. 点击**「加载解压缩的扩展 / Load unpacked」**。
-4. 选择本项目文件夹 `bilibili-account-switcher`。
-5. 安装完成后，工具栏会出现插件图标，点击即可使用。
+Open the extension on any http/https site and it auto-generates a site config based on the main domain, saving and switching accounts by cookie. These sites have no username/avatar source, so a **fingerprint ID** is derived from cookies such as `session`/`auth`/`token`/`cf_clearance` to identify each account.
 
 ---
 
-## 使用说明
+## Installation
 
-### 1. 添加第一个账号
-
-1. 打开支持的网站（如 Bilibili），登录账号 A。
-2. 点击工具栏插件图标打开面板。
-3. 点击**「添加当前账号」**。
-4. 账号 A 出现在列表中。
-
-### 2. 添加更多账号（重要！）
-
-为避免旧账号 Cookie 被服务器注销，**请勿在网页里点「退出登录」**，改用插件操作：
-
-1. 点击**「登录新账号」**。
-   - 该操作只清除浏览器本地 Cookie，**不会**通知站点服务器注销，因此旧账号仍可用。
-2. 页面自动刷新为未登录状态。
-3. 在网页正常登录账号 B。
-4. 再次点击**「添加当前账号」**。
-5. 列表中现在有两个有效账号。
-
-### 3. 切换账号
-
-点击列表中的任一账号卡片，插件会先保存当前账号最新 Cookie，再写入目标账号 Cookie 并刷新页面，完成切换。当前正在使用的账号会有高亮标记。
-
-### 4. 重命名账号
-
-点击账号卡片右侧的 **✎** 按钮，直接输入新名称，回车保存（Esc 取消）。该名称仅用于本地展示。
-
-### 5. 删除账号
-
-点击账号卡片右侧的 **×** 按钮，确认后删除该账号记录（不影响浏览器当前的登录状态）。
+1. Open Edge's extension management page `edge://extensions/`, or Chrome's `chrome://extensions/`.
+2. Turn on **Developer mode**.
+3. Click **Load unpacked**.
+4. Select this project's folder, `bilibili-account-switcher`.
+5. Once installed, the extension icon appears in the toolbar — click it to start.
 
 ---
 
-## 网页悬浮窗
+## Usage
 
-在已保存账号的网站页面上，右下角会自动出现一个**悬浮球**，点开即是一个精简切换面板。
+### 1. Add your first account
 
-- **拖拽**：按住悬浮球可拖动到任意位置。
-- **默认行为**：只在「已保存过账号」的网站显示，避免在无关网页造成干扰。
-- **设置（面板右上角 ⚙）**：
-  - *全局启用网页悬浮窗*：一键开关所有站点的悬浮球。
-  - *在当前网站启用悬浮窗*：单独控制当前站点的悬浮球。
+1. Open a supported site (e.g., Bilibili) and log into account A.
+2. Click the extension icon in the toolbar to open the panel.
+3. Click **Add current account**.
+4. Account A appears in the list.
+
+### 2. Add more accounts (important!)
+
+To keep old accounts from being revoked by the server, **do not click "Log out" on the website** — use the extension instead:
+
+1. Click **Log in to a new account**.
+   - This only clears the browser's local cookies and **does not** notify the site server to revoke them, so the old account stays valid.
+2. The page reloads into a logged-out state.
+3. Log into account B normally on the website.
+4. Click **Add current account** again.
+5. You now have two valid accounts in the list.
+
+### 3. Switch accounts
+
+Click any account card in the list. The extension first saves the current account's latest cookies, then writes the target account's cookies and reloads the page to complete the switch. The account currently in use is highlighted.
+
+### 4. Rename an account
+
+Click the **✎** button on the right of an account card, type a new name, and press Enter to save (Esc to cancel). The name is used only for local display.
+
+### 5. Delete an account
+
+Click the **×** button on the right of an account card, confirm, and the account record is deleted (this does not affect the browser's current login state).
 
 ---
 
-## 工作原理
+## Floating Panel
 
-扩展的核心是 **Cookie 的读取 / 写入 / 清除**：
+On sites where accounts have been saved, a **floating ball** automatically appears in the bottom-right corner — click it to open a compact switching panel.
 
-- **保存账号**：抓取当前账号的用户信息 + 全量 Cookie，存入本地存储。
-- **切换账号**：先把当前账号的最新 Cookie 回写保存（防止使用期间 Cookie 刷新导致切回失效），再清除本地 Cookie、写入目标账号 Cookie，最后刷新页面。
-- **登录新账号**：同样先回写当前 Cookie，再清除本地 Cookie——只动本地、不调站点注销接口，因此旧账号不会失效。
-- **数据迁移**：首次读取时，会自动把旧版（仅 Bilibili）的账号数据迁移到新的按站点分组结构。
+- **Drag**: Hold the floating ball to drag it anywhere.
+- **Default behavior**: It appears only on sites where accounts have been saved, to avoid clutter on unrelated pages.
+- **Settings (⚙ in the top-right of the panel)**:
+  - *Enable floating panel globally*: Toggle the floating ball for all sites at once.
+  - *Enable floating panel on this site*: Control the floating ball for the current site only.
 
 ---
 
-## 项目结构
+## How It Works
+
+The extension's core is **reading / writing / clearing cookies**:
+
+- **Save account**: Grabs the current account's user info + all cookies and stores them locally.
+- **Switch account**: First writes back the current account's latest cookies (so a refresh during use doesn't make the switch-back fail), then clears local cookies, writes the target account's cookies, and finally reloads the page.
+- **Log in to a new account**: Also writes back the current cookies first, then clears local cookies — it only touches local data and never calls the site's logout endpoint, so old accounts stay valid.
+- **Data migration**: On first read, old-version (Bilibili-only) account data is automatically migrated to the new site-grouped structure.
+
+---
+
+## Project Structure
 
 ```
 bilibili-account-switcher/
-├── manifest.json     # 扩展配置（MV3，权限：cookies / storage / tabs）
-├── background.js     # Service Worker，处理所有业务消息
-├── utils.js          # 核心工具库：站点配置、Cookie 操作、账号管理
-├── popup.html        # 工具栏弹窗结构
-├── popup.js          # 弹窗交互逻辑
-├── style.css         # 弹窗样式
-├── floating.js       # 网页悬浮窗（content script）
-├── floating.css      # 悬浮窗样式
-├── assets/           # 图标资源
+├── manifest.json     # Extension config (MV3, permissions: cookies / storage / tabs)
+├── background.js     # Service Worker, handles all business messages
+├── utils.js          # Core utility library: site config, cookie ops, account management
+├── popup.html        # Toolbar popup structure
+├── popup.js          # Popup interaction logic
+├── style.css         # Popup styles
+├── floating.js       # Floating panel (content script)
+├── floating.css      # Floating panel styles
+├── assets/           # Icon assets
 └── README.md
 ```
 
 ---
 
-## 常见问题
+## FAQ
 
-**Q：切换回去后显示未登录？**
-A：Cookie 有有效期，长期不使用可能过期；若在网页点了「退出登录」，服务器可能注销该 Cookie 导致记录失效。请尽量使用插件的「登录新账号」来切换。
+**Q: After switching back, it shows logged out?**
+A: Cookies have an expiration date — long-unused ones may expire; if you clicked "Log out" on the website, the server may have revoked that cookie, invalidating the record. Prefer using the extension's "Log in to a new account" to switch.
 
-**Q：账号信息安全吗？**
-A：代码开源，所有数据仅存于本地浏览器（`chrome.storage.local`），不会上传到任何第三方服务器。
+**Q: Is my account info safe?**
+A: The code is open source and all data stays in your local browser (`chrome.storage.local`) — nothing is uploaded to any third-party server.
 
-**Q：原来保存的 B 站账号还在吗？**
-A：在。新版首次读取时会自动迁移旧版 B 站账号数据。
+**Q: Are my previously saved Bilibili accounts still there?**
+A: Yes. On first read, the new version automatically migrates old Bilibili account data.
 
-**Q：非 Bilibili / ChatGPT 网站能用吗？**
-A：能用。扩展会对任意网站按主域名生成站点配置，基于 Cookie 完成保存与切换；只是这类站点无法获取真实用户名，改用 Cookie 指纹标识账号。
+**Q: Can I use it on non-Bilibili / non-ChatGPT sites?**
+A: Yes. The extension generates a site config for any website based on its main domain and handles saving and switching by cookie; these sites just can't fetch a real username, so a cookie fingerprint is used to identify accounts instead.
 
 ---
 
-## 注意事项
+## Notes
 
-- 请勿在不可信的公共电脑上使用，以免账号 Cookie 泄露。
-- ChatGPT 等站点的登录机制可能随官方更新而变化，若信息获取失败，请先确认已在对应页面完成登录。
-- 扩展需要 `cookies` 与 `<all_urls>` 权限才能读写各站点的登录态，均为本地操作。
+- Do not use this on an untrusted public computer, to avoid leaking account cookies.
+- Login mechanisms for sites like ChatGPT may change with official updates. If info fetch fails, first confirm that you're logged in on the corresponding page.
+- The extension needs the `cookies` and `<all_urls>` permissions to read/write login state on various sites — all operations are local.
