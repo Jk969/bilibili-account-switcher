@@ -1,27 +1,71 @@
 let currentSite = null;
 
-// 初始化检查
-chrome.runtime.sendMessage({ type: "GET_CURRENT_SITE_CONFIG" }, (response) => {
-  if (!response || !response.success || !response.data) {
-    return;
+// MV3 content script 无法 import ES module，这里内联一份最小站点识别逻辑，
+// 仅用于初始化时判断「是否显示悬浮球」，避免每个页面都发消息唤醒 service worker。
+// siteId 与 utils.js 的 getSiteByUrl 保持一致：predefined 用 SITES key，其余用 baseDomain。
+const KNOWN_SITES = [
+  { id: "bilibili", patterns: ["bilibili.com"], shortName: "B站", accentColor: "#00a1d6" },
+  { id: "chatgpt", patterns: ["chatgpt.com", "chat.openai.com"], shortName: "ChatGPT", accentColor: "#10a37f" }
+];
+
+function getBaseDomain(hostname) {
+  if (!hostname) return "";
+  const parts = hostname.split('.');
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return hostname;
+  const tldSuffixes = [
+    'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'edu.cn',
+    'com.hk', 'org.hk', 'co.uk', 'org.uk', 'co.jp', 'ne.jp',
+    'com.tw', 'org.tw', 'edu.tw', 'org.mo', 'com.mo'
+  ];
+  let baseDomainIndex = parts.length - 2;
+  if (parts.length >= 3) {
+    const lastTwo = parts.slice(-2).join('.');
+    if (tldSuffixes.includes(lastTwo)) baseDomainIndex = parts.length - 3;
   }
+  if (baseDomainIndex < 0) baseDomainIndex = 0;
+  return parts.slice(baseDomainIndex).join('.');
+}
 
-  currentSite = response.data;
+function generateColorFromString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return `hsl(${Math.abs(hash) % 360}, 70%, 40%)`;
+}
 
-  // 只读取 UI 开关与悬浮球位置（均不含敏感数据）。
-  // 是否已有账号由 background 的 hasAccounts 返回，避免在这里读 accountsBySite（含全部 cookie）。
-  chrome.storage.local.get(["hideFloatingSites", "globalDisableFloating", "floatPosition"], (result) => {
-    if (result.globalDisableFloating) return;
+function resolveSiteByHost(hostname) {
+  for (const site of KNOWN_SITES) {
+    if (site.patterns.some(p => hostname === p || hostname.endsWith("." + p))) {
+      return { id: site.id, shortName: site.shortName, accentColor: site.accentColor };
+    }
+  }
+  const base = getBaseDomain(hostname);
+  if (!base) return null;
+  return { id: base, shortName: base, accentColor: generateColorFromString(base) };
+}
 
-    // 如果设置中隐藏了该站点，不显示
-    if (result.hideFloatingSites && result.hideFloatingSites[currentSite.id]) return;
+// 初始化：仅用本地主机名 + storage（UI 开关 / sitesWithAccounts）判断是否显示，
+// 全程不发送消息、不唤醒 service worker；账号列表/用户信息等仅在用户打开面板时才拉取。
+(function init() {
+  const site = resolveSiteByHost(location.hostname);
+  if (!site) return;
+  currentSite = site;
 
-    // 没有账号记录默认不显示，避免打扰
-    if (!currentSite.hasAccounts) return;
+  chrome.storage.local.get(
+    ["hideFloatingSites", "globalDisableFloating", "floatPosition", "sitesWithAccounts"],
+    (result) => {
+      if (result.globalDisableFloating) return;
+      if (result.hideFloatingSites && result.hideFloatingSites[currentSite.id]) return;
 
-    initFloatingWidget(result.floatPosition);
-  });
-});
+      const hasAccounts = !!(result.sitesWithAccounts && result.sitesWithAccounts[currentSite.id]);
+      // 没有账号记录默认不显示，避免打扰
+      if (!hasAccounts) return;
+
+      initFloatingWidget(result.floatPosition);
+    }
+  );
+})();
 
 let floatEl, iconEl, panelEl, listEl, closeBtn, addBtn, newBtn, statusEl;
 let isDragging = false;

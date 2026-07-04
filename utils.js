@@ -78,6 +78,9 @@ const ACCOUNTS_BY_SITE_KEY = "accountsBySite";
 const LEGACY_BILIBILI_ACCOUNTS_KEY = "accounts";
 // 记录每个站点「当前活动账号 id」，用于切换前精确回写最新 cookie
 const ACTIVE_ACCOUNT_KEY = "activeAccountBySite";
+// 记录「哪些站点有账号」的轻量集合（仅 siteId→true，不含 cookie），
+// 供 content script 不唤醒 service worker、不读 accountsBySite 即可判断是否显示悬浮球
+const SITES_WITH_ACCOUNTS_KEY = "sitesWithAccounts";
 // 数据结构版本号，便于未来迁移；旧数据会在写入时被补上
 const SCHEMA_VERSION = 1;
 
@@ -87,6 +90,21 @@ const SCHEMA_VERSION = 1;
 async function persistAccountsBySite(accountsBySite) {
   accountsBySite.schemaVersion = SCHEMA_VERSION;
   await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+}
+
+/**
+ * 重新计算某站点是否仍有账号，更新 sitesWithAccounts 集合
+ */
+export async function recomputeSiteHasAccounts(siteId) {
+  const storage = await getStorage([SITES_WITH_ACCOUNTS_KEY]);
+  const map = storage[SITES_WITH_ACCOUNTS_KEY] || {};
+  const accounts = await getAccounts(siteId);
+  if (Object.keys(accounts).length > 0) {
+    map[siteId] = true;
+  } else {
+    delete map[siteId];
+  }
+  await setStorage({ [SITES_WITH_ACCOUNTS_KEY]: map });
 }
 
 export function getBaseDomain(hostname) {
@@ -300,6 +318,7 @@ export async function saveAccount(siteId = "bilibili", account) {
 
   accountsBySite[siteId] = siteAccounts;
   await persistAccountsBySite(accountsBySite);
+  await recomputeSiteHasAccounts(siteId);
   // 刚保存的就是当前登录中的账号，记为活动账号
   await setActiveAccountId(siteId, normalizedAccount.id);
   return normalizedAccount.id;
@@ -326,6 +345,7 @@ export async function deleteAccount(siteId = "bilibili", accountId) {
     delete siteAccounts[accountId];
     accountsBySite[siteId] = siteAccounts;
     await persistAccountsBySite(accountsBySite);
+    await recomputeSiteHasAccounts(siteId);
   }
 }
 
@@ -430,6 +450,13 @@ async function getAccountsBySite() {
       accountsBySite.bilibili[normalizedAccount.id] = normalizedAccount;
     });
     await persistAccountsBySite(accountsBySite);
+    // 同步 sitesWithAccounts，避免升级用户在 B 站看不到悬浮球
+    if (Object.keys(accountsBySite.bilibili).length > 0) {
+      const sa = await getStorage([SITES_WITH_ACCOUNTS_KEY]);
+      const saMap = sa[SITES_WITH_ACCOUNTS_KEY] || {};
+      saMap.bilibili = true;
+      await setStorage({ [SITES_WITH_ACCOUNTS_KEY]: saMap });
+    }
   }
 
   return accountsBySite;

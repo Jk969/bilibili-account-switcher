@@ -36,34 +36,13 @@ function stripCookies(accounts) {
 
 async function handleMessage(request, sender) {
   const siteId = resolveSiteId(request, sender);
-  if (!siteId && request.type !== "GET_CURRENT_SITE_CONFIG") {
+  if (!siteId) {
     return { success: false, error: "当前页面暂不支持账号切换" };
   }
 
   switch (request.type) {
     case "GET_SITE":
       return { success: true, data: siteId };
-
-    case "GET_CURRENT_SITE_CONFIG": {
-      const url = sender?.tab?.url;
-      const site = getSiteByUrl(url);
-      if (site) {
-        const accounts = await getAccounts(site.id);
-        return {
-          success: true,
-          data: {
-            id: site.id,
-            name: site.name,
-            shortName: site.shortName,
-            accentColor: site.accentColor,
-            // 是否已有账号，供 content script 决定是否显示悬浮球
-            // （避免它直接读 accountsBySite —— 那里含有全部 cookie）
-            hasAccounts: Object.keys(accounts).length > 0
-          }
-        };
-      }
-      return { success: false, error: "Unsupported site" };
-    }
 
     case "GET_ACCOUNTS": {
       const accounts = await getAccounts(siteId);
