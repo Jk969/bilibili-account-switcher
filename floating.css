@@ -206,3 +206,38 @@
   outline: none;
   box-sizing: border-box;
 }
+
+.bili-switcher-delete-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 15px;
+  line-height: 1;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bili-switcher-delete-btn:hover {
+  color: #ff4d4f;
+}
+
+.bili-switcher-status {
+  min-height: 18px;
+  padding: 2px 12px 6px;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.bili-switcher-status.success {
+  color: #52c41a;
+}
+
+.bili-switcher-status.error {
+  color: #ff4d4f;
+}

@@ -1,15 +1,14 @@
 import {
-  clearSiteCookies,
   deleteAccount,
   fetchUserInfo,
   getAccounts,
   getSiteByUrl,
   getSiteCookies,
   saveAccount,
-  setSiteCookies,
   SITES,
-  updateCurrentAccountCookies,
-  renameAccount
+  renameAccount,
+  switchToAccount,
+  prepareForNewLogin
 } from "./utils.js";
 
 // 监听来自 content script 或 popup 的消息
@@ -20,6 +19,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   });
   return true; // 保持通道开启以进行异步响应
 });
+
+// content script 不需要 cookie，剥离掉以防通过页面上下文泄露
+function stripCookies(accounts) {
+  const result = {};
+  for (const [id, account] of Object.entries(accounts)) {
+    if (account && account.cookies) {
+      const { cookies: _omit, ...rest } = account;
+      result[id] = rest;
+    } else {
+      result[id] = account;
+    }
+  }
+  return result;
+}
 
 async function handleMessage(request, sender) {
   const siteId = resolveSiteId(request, sender);
@@ -35,21 +48,31 @@ async function handleMessage(request, sender) {
       const url = sender?.tab?.url;
       const site = getSiteByUrl(url);
       if (site) {
+        const accounts = await getAccounts(site.id);
         return {
           success: true,
           data: {
             id: site.id,
             name: site.name,
             shortName: site.shortName,
-            accentColor: site.accentColor
+            accentColor: site.accentColor,
+            // 是否已有账号，供 content script 决定是否显示悬浮球
+            // （避免它直接读 accountsBySite —— 那里含有全部 cookie）
+            hasAccounts: Object.keys(accounts).length > 0
           }
         };
       }
       return { success: false, error: "Unsupported site" };
     }
 
-    case "GET_ACCOUNTS":
-      return { success: true, data: await getAccounts(siteId) };
+    case "GET_ACCOUNTS": {
+      const accounts = await getAccounts(siteId);
+      // 来自 content script（sender.tab 存在）时剥离 cookie，仅扩展页面可拿到完整数据
+      if (sender?.tab) {
+        return { success: true, data: stripCookies(accounts) };
+      }
+      return { success: true, data: accounts };
+    }
 
     case "GET_USER_INFO":
       return { success: true, data: await fetchUserInfo(siteId) };
@@ -67,16 +90,13 @@ async function handleMessage(request, sender) {
     }
 
     case "SWITCH_ACCOUNT":
-      // 切换前自动更新当前账号的 Cookies 到 storage
-      // 防止因使用期间 Cookie 变化导致切回时失效
-      await updateCurrentAccountCookies(siteId);
-      await setSiteCookies(siteId, request.account.cookies);
+      // 仅凭 accountId 切换；cookie 由 background 自行从 storage 取，不经过 content script
+      await switchToAccount(siteId, request.accountId || request.account?.id);
       return { success: true };
 
     case "LOGIN_NEW":
       // 登录新账号前也保存当前状态
-      await updateCurrentAccountCookies(siteId);
-      await clearSiteCookies(siteId);
+      await prepareForNewLogin(siteId);
       return { success: true };
 
     case "DELETE_ACCOUNT":

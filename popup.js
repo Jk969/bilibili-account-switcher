@@ -1,14 +1,13 @@
 import {
-  clearSiteCookies,
   deleteAccount,
   fetchUserInfo,
   getAccounts,
   getSiteByUrl,
   getSiteCookies,
   saveAccount,
-  setSiteCookies,
-  updateCurrentAccountCookies,
-  renameAccount
+  renameAccount,
+  switchToAccount,
+  prepareForNewLogin
 } from "./utils.js";
 
 // DOM 元素
@@ -256,8 +255,7 @@ async function handleAddAccount() {
 async function switchAccount(account) {
   showStatus(`正在切换到 ${account.displayName || account.uname}...`);
   try {
-    await updateCurrentAccountCookies(currentSite.id);
-    await setSiteCookies(currentSite.id, account.cookies);
+    await switchToAccount(currentSite.id, account.id);
 
     // 刷新当前页面
     if (currentTab && currentSite.urlPatterns.some(pattern => currentTab.url.includes(pattern))) {
@@ -271,7 +269,7 @@ async function switchAccount(account) {
     }, 1000);
   } catch (error) {
     console.error(error);
-    showStatus("切换失败", "error");
+    showStatus(`切换失败：${error.message || ""}`, "error");
   }
 }
 
@@ -283,8 +281,7 @@ async function handleLoginNew() {
   if (!currentSite) return;
 
   if (confirm("确定要清除本地状态以登录新账号吗？\n（注意：这不会导致旧账号失效）")) {
-    await updateCurrentAccountCookies(currentSite.id);
-    await clearSiteCookies(currentSite.id);
+    await prepareForNewLogin(currentSite.id);
 
     // 刷新页面
     if (currentTab && currentSite.urlPatterns.some(pattern => currentTab.url.includes(pattern))) {

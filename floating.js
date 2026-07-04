@@ -1,57 +1,35 @@
 let currentSite = null;
 
-function getBaseDomain(hostname) {
-  if (!hostname) return "";
-  const parts = hostname.split('.');
-  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-    return hostname;
-  }
-  const tldSuffixes = [
-    'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'edu.cn',
-    'com.hk', 'org.hk', 'co.uk', 'org.uk', 'co.jp', 'ne.jp',
-    'com.tw', 'org.tw', 'edu.tw', 'org.mo', 'com.mo'
-  ];
-  let baseDomainIndex = parts.length - 2;
-  if (parts.length >= 3) {
-    const lastTwo = parts.slice(-2).join('.');
-    if (tldSuffixes.includes(lastTwo)) {
-      baseDomainIndex = parts.length - 3;
-    }
-  }
-  if (baseDomainIndex < 0) baseDomainIndex = 0;
-  return parts.slice(baseDomainIndex).join('.');
-}
-
 // 初始化检查
 chrome.runtime.sendMessage({ type: "GET_CURRENT_SITE_CONFIG" }, (response) => {
   if (!response || !response.success || !response.data) {
     return;
   }
-  
+
   currentSite = response.data;
-  
-  // 检查是否显示悬浮窗
-  chrome.storage.local.get(["accountsBySite", "hideFloatingSites", "globalDisableFloating"], (result) => {
+
+  // 只读取 UI 开关与悬浮球位置（均不含敏感数据）。
+  // 是否已有账号由 background 的 hasAccounts 返回，避免在这里读 accountsBySite（含全部 cookie）。
+  chrome.storage.local.get(["hideFloatingSites", "globalDisableFloating", "floatPosition"], (result) => {
     if (result.globalDisableFloating) return;
-    
+
     // 如果设置中隐藏了该站点，不显示
     if (result.hideFloatingSites && result.hideFloatingSites[currentSite.id]) return;
 
-    const accounts = result.accountsBySite?.[currentSite.id] || {};
-    const hasAccounts = Object.keys(accounts).length > 0;
+    // 没有账号记录默认不显示，避免打扰
+    if (!currentSite.hasAccounts) return;
 
-    // 如果该站点没有账号记录，默认不显示悬浮球，避免打扰
-    if (!hasAccounts) return;
-
-    initFloatingWidget();
+    initFloatingWidget(result.floatPosition);
   });
 });
 
-let floatEl, iconEl, panelEl, listEl, closeBtn, addBtn, newBtn;
+let floatEl, iconEl, panelEl, listEl, closeBtn, addBtn, newBtn, statusEl;
 let isDragging = false;
+let didDrag = false; // 本次 mousedown 后是否真的发生了拖动（超过阈值）
 let startX, startY, initialRight, initialBottom;
+const DRAG_THRESHOLD = 5; // 像素，小于该距离视为点击
 
-function initFloatingWidget() {
+function initFloatingWidget(savedPosition) {
   const floatHTML = `
   <div class="bili-switcher-float" id="biliSwitcherFloat" style="--switcher-accent-color:${currentSite.accentColor}">
     <div class="bili-switcher-icon" id="biliSwitcherIcon" title="切换账号">
@@ -59,12 +37,13 @@ function initFloatingWidget() {
     </div>
     <div class="bili-switcher-panel" id="biliSwitcherPanel">
       <div class="bili-switcher-header">
-        <span>${currentSite.shortName}账号切换</span>
+        <span>${escapeHtml(currentSite.shortName + "账号切换")}</span>
         <span class="bili-switcher-close" id="biliSwitcherClose">×</span>
       </div>
       <div class="bili-switcher-list" id="biliSwitcherList">
         <!-- 账号列表 -->
       </div>
+      <div class="bili-switcher-status" id="biliSwitcherStatus"></div>
       <div class="bili-switcher-footer">
         <button class="bili-switcher-btn bili-switcher-btn-primary" id="biliSwitcherAdd">添加当前</button>
         <button class="bili-switcher-btn bili-switcher-btn-secondary" id="biliSwitcherNew">登录新号</button>
@@ -85,6 +64,12 @@ function initFloatingWidget() {
   closeBtn = document.getElementById("biliSwitcherClose");
   addBtn = document.getElementById("biliSwitcherAdd");
   newBtn = document.getElementById("biliSwitcherNew");
+  statusEl = document.getElementById("biliSwitcherStatus");
+
+  // 恢复上次拖拽位置（限制在视口内）
+  if (savedPosition) {
+    applyPosition(savedPosition);
+  }
 
   // 事件监听
   iconEl.addEventListener("click", togglePanel);
@@ -98,38 +83,69 @@ function initFloatingWidget() {
   document.addEventListener("mouseup", stopDrag);
 }
 
+function applyPosition(pos) {
+  const size = 48;
+  const maxRight = Math.max(0, window.innerWidth - size);
+  const maxBottom = Math.max(0, window.innerHeight - size);
+  const right = Math.min(Math.max(0, pos.right || 0), maxRight);
+  const bottom = Math.min(Math.max(0, pos.bottom || 0), maxBottom);
+  floatEl.style.right = `${right}px`;
+  floatEl.style.bottom = `${bottom}px`;
+}
+
 function startDrag(e) {
   if (e.target !== iconEl) return;
   isDragging = true;
+  didDrag = false;
 
   startX = e.clientX;
   startY = e.clientY;
 
   const style = window.getComputedStyle(floatEl);
-  initialRight = parseInt(style.right);
-  initialBottom = parseInt(style.bottom);
+  initialRight = parseInt(style.right) || 0;
+  initialBottom = parseInt(style.bottom) || 0;
 
   iconEl.style.cursor = "grabbing";
 }
 
 function drag(e) {
   if (!isDragging) return;
-  e.preventDefault();
 
   const dx = startX - e.clientX;
   const dy = startY - e.clientY;
 
+  // 未超过阈值时不进入拖动，避免误判点击
+  if (!didDrag && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+  didDrag = true;
+
+  e.preventDefault();
   floatEl.style.right = `${initialRight + dx}px`;
   floatEl.style.bottom = `${initialBottom + dy}px`;
 }
 
 function stopDrag() {
+  if (!isDragging) return;
   isDragging = false;
   iconEl.style.cursor = "pointer";
+
+  // 真正拖动过才持久化位置
+  if (didDrag) {
+    const style = window.getComputedStyle(floatEl);
+    chrome.storage.local.set({
+      floatPosition: {
+        right: parseInt(style.right) || 0,
+        bottom: parseInt(style.bottom) || 0
+      }
+    });
+  }
 }
 
 async function togglePanel() {
-  if (isDragging) return;
+  // 若刚结束一次拖动，吞掉本次 click，不切换面板
+  if (didDrag) {
+    didDrag = false;
+    return;
+  }
 
   const isShow = panelEl.classList.contains("show");
   if (isShow) {
@@ -178,13 +194,15 @@ async function renderList() {
     const actionsHTML = `
       <div class="bili-switcher-actions">
         <button class="bili-switcher-edit-btn" title="修改账号名称">✎</button>
+        <button class="bili-switcher-delete-btn" title="删除账号">×</button>
       </div>
     `;
-    
+
     item.innerHTML = avatarHTML + infoHTML + actionsHTML;
-    
+
     const nameEl = item.querySelector(".bili-switcher-name");
     const editBtn = item.querySelector(".bili-switcher-edit-btn");
+    const deleteBtn = item.querySelector(".bili-switcher-delete-btn");
     
     // 切换账号事件
     item.addEventListener("click", (e) => {
@@ -239,7 +257,21 @@ async function renderList() {
         await finishEdit(true);
       });
     });
-    
+
+    // 删除账号事件
+    deleteBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (confirm(`确定要删除账号 ${account.displayName || account.uname} 吗？`)) {
+        const res = await sendMessage("DELETE_ACCOUNT", { accountId: account.id });
+        if (res && res.success) {
+          showStatus("账号已删除", "success");
+          await renderList();
+        } else {
+          showStatus("删除失败：" + (res?.error || "未知错误"), "error");
+        }
+      }
+    });
+
     listEl.appendChild(item);
   });
 }
@@ -258,21 +290,38 @@ function renderAvatar(account) {
 async function switchAccount(account, currentAccountId) {
   if (account.id == currentAccountId) return;
 
-  if (confirm(`确定切换到 ${account.displayName || account.uname} 吗？`)) {
-    await sendMessage("SWITCH_ACCOUNT", { account });
+  showStatus(`正在切换到 ${account.displayName || account.uname}...`);
+  // 仅传 accountId，cookie 由 background 自行从 storage 取，不经过页面上下文
+  const res = await sendMessage("SWITCH_ACCOUNT", { accountId: account.id });
+  if (res && res.success) {
     location.reload();
+  } else {
+    showStatus("切换失败：" + (res?.error || "未知错误"), "error");
   }
 }
 
 // 添加当前账号
 async function handleAddAccount() {
   const response = await sendMessage("ADD_ACCOUNT");
-  if (response.success) {
-    alert("账号添加成功！");
-    renderList();
+  if (response && response.success) {
+    showStatus("账号添加成功", "success");
+    await renderList();
   } else {
-    alert("添加失败：" + (response.error || "未登录或网络错误"));
+    showStatus("添加失败：" + (response?.error || "未登录或网络错误"), "error");
   }
+}
+
+// 面板内状态提示（替代 alert）
+function showStatus(msg, type = "info") {
+  if (!statusEl) return;
+  statusEl.textContent = msg;
+  statusEl.className = "bili-switcher-status" +
+    (type === "success" ? " success" : type === "error" ? " error" : "");
+  clearTimeout(showStatus._t);
+  showStatus._t = setTimeout(() => {
+    statusEl.textContent = "";
+    statusEl.className = "bili-switcher-status";
+  }, 2500);
 }
 
 // 登录新账号

@@ -76,6 +76,8 @@ export const SITES = {
 
 const ACCOUNTS_BY_SITE_KEY = "accountsBySite";
 const LEGACY_BILIBILI_ACCOUNTS_KEY = "accounts";
+// 记录每个站点「当前活动账号 id」，用于切换前精确回写最新 cookie
+const ACTIVE_ACCOUNT_KEY = "activeAccountBySite";
 
 export function getBaseDomain(hostname) {
   if (!hostname) return "";
@@ -246,7 +248,12 @@ export async function clearSiteCookies(siteId = "bilibili") {
     if (cookie.storeId) details.storeId = cookie.storeId;
 
     return new Promise(resolve => {
-      chrome.cookies.remove(details, resolve);
+      chrome.cookies.remove(details, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Remove cookie error:", chrome.runtime.lastError, cookie.name);
+        }
+        resolve();
+      });
     });
   });
 
@@ -283,6 +290,9 @@ export async function saveAccount(siteId = "bilibili", account) {
 
   accountsBySite[siteId] = siteAccounts;
   await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+  // 刚保存的就是当前登录中的账号，记为活动账号
+  await setActiveAccountId(siteId, normalizedAccount.id);
+  return normalizedAccount.id;
 }
 
 /**
@@ -317,8 +327,14 @@ export async function updateCurrentAccountCookies(siteId = "bilibili") {
   try {
     const cookies = await getSiteCookies(siteId);
     const site = getSite(siteId);
+    // 1) 优先用站点稳定的 cookie 字段识别「真实当前登录」（如 Bilibili 的 DedeUserID）
     let accountId = site.getCurrentAccountIdFromCookies?.(cookies) || null;
-
+    // 2) 回退到本扩展记录的活动账号 —— 适合没有稳定 cookie 字段的站点（ChatGPT / 通用站点），
+    //    其指纹会随 token 轮换漂移，直接用活动账号比用漂移指纹更可靠
+    if (!accountId) {
+      accountId = await getActiveAccountId(siteId);
+    }
+    // 3) 最后回退：调用站点用户信息接口
     if (!accountId) {
       const currentUser = await fetchUserInfo(siteId);
       accountId = currentUser?.id || null;
@@ -340,6 +356,51 @@ export async function updateCurrentAccountCookies(siteId = "bilibili") {
     console.error("Auto update account failed:", error);
   }
   return false;
+}
+
+/**
+ * 获取某站点当前活动账号 id（本扩展自己记录的「最近切到/添加的账号」）
+ */
+export async function getActiveAccountId(siteId) {
+  const storage = await getStorage([ACTIVE_ACCOUNT_KEY]);
+  return storage[ACTIVE_ACCOUNT_KEY]?.[siteId] || null;
+}
+
+/**
+ * 设置/清除某站点当前活动账号 id
+ */
+export async function setActiveAccountId(siteId, accountId) {
+  const storage = await getStorage([ACTIVE_ACCOUNT_KEY]);
+  const map = storage[ACTIVE_ACCOUNT_KEY] || {};
+  if (accountId) {
+    map[siteId] = accountId;
+  } else {
+    delete map[siteId];
+  }
+  await setStorage({ [ACTIVE_ACCOUNT_KEY]: map });
+}
+
+/**
+ * 切换到指定账号：先回写当前账号最新 cookie，再写入目标账号 cookie，并更新活动账号
+ */
+export async function switchToAccount(siteId = "bilibili", accountId) {
+  if (!accountId) throw new Error("缺少目标账号 id");
+  const accounts = await getAccounts(siteId);
+  const target = accounts[accountId];
+  if (!target) throw new Error("未找到目标账号");
+
+  await updateCurrentAccountCookies(siteId);
+  await setSiteCookies(siteId, target.cookies);
+  await setActiveAccountId(siteId, accountId);
+}
+
+/**
+ * 为登录新账号做准备：回写当前 cookie 后清除本地 cookie，并清空活动账号记录
+ */
+export async function prepareForNewLogin(siteId = "bilibili") {
+  await updateCurrentAccountCookies(siteId);
+  await clearSiteCookies(siteId);
+  await setActiveAccountId(siteId, null);
 }
 
 // 兼容旧函数名
@@ -366,7 +427,27 @@ async function getAccountsBySite() {
 
 function getCookiesByDomain(domain) {
   return new Promise(resolve => {
-    chrome.cookies.getAll({ domain }, cookies => resolve(cookies || []));
+    // 先取非分区 cookie（所有版本都支持）
+    chrome.cookies.getAll({ domain }, unpartitioned => {
+      if (chrome.runtime.lastError) {
+        console.error("getAll cookies error:", chrome.runtime.lastError);
+        resolve(unpartitioned || []);
+        return;
+      }
+      // 再尝试取分区 cookie（CHIPS，Chrome 119+）；旧版本会触发 lastError，忽略即可。
+      // 去重交给 getSiteCookies 的 Map 处理，重复无害。
+      try {
+        chrome.cookies.getAll({ domain, partitionKey: {} }, partitioned => {
+          if (chrome.runtime.lastError) {
+            resolve(unpartitioned || []);
+            return;
+          }
+          resolve([...(unpartitioned || []), ...(partitioned || [])]);
+        });
+      } catch (e) {
+        resolve(unpartitioned || []);
+      }
+    });
   });
 }
 
