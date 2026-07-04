@@ -78,6 +78,16 @@ const ACCOUNTS_BY_SITE_KEY = "accountsBySite";
 const LEGACY_BILIBILI_ACCOUNTS_KEY = "accounts";
 // 记录每个站点「当前活动账号 id」，用于切换前精确回写最新 cookie
 const ACTIVE_ACCOUNT_KEY = "activeAccountBySite";
+// 数据结构版本号，便于未来迁移；旧数据会在写入时被补上
+const SCHEMA_VERSION = 1;
+
+/**
+ * 统一写入 accountsBySite，并补上 schema 版本号
+ */
+async function persistAccountsBySite(accountsBySite) {
+  accountsBySite.schemaVersion = SCHEMA_VERSION;
+  await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+}
 
 export function getBaseDomain(hostname) {
   if (!hostname) return "";
@@ -138,7 +148,7 @@ export async function renameAccount(siteId, accountId, newName) {
     siteAccounts[accountId].displayName = newName;
     siteAccounts[accountId].uname = newName;
     accountsBySite[siteId] = siteAccounts;
-    await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+    await persistAccountsBySite(accountsBySite);
   }
 }
 
@@ -289,7 +299,7 @@ export async function saveAccount(siteId = "bilibili", account) {
   };
 
   accountsBySite[siteId] = siteAccounts;
-  await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+  await persistAccountsBySite(accountsBySite);
   // 刚保存的就是当前登录中的账号，记为活动账号
   await setActiveAccountId(siteId, normalizedAccount.id);
   return normalizedAccount.id;
@@ -315,7 +325,7 @@ export async function deleteAccount(siteId = "bilibili", accountId) {
   if (siteAccounts[accountId]) {
     delete siteAccounts[accountId];
     accountsBySite[siteId] = siteAccounts;
-    await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+    await persistAccountsBySite(accountsBySite);
   }
 }
 
@@ -348,7 +358,7 @@ export async function updateCurrentAccountCookies(siteId = "bilibili") {
       siteAccounts[accountId].cookies = cookies;
       siteAccounts[accountId].timestamp = Date.now();
       accountsBySite[siteId] = siteAccounts;
-      await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+      await persistAccountsBySite(accountsBySite);
       console.log(`[AutoSave] Updated cookies for ${siteId} account: ${accountId}`);
       return true;
     }
@@ -419,7 +429,7 @@ async function getAccountsBySite() {
       const normalizedAccount = normalizeAccount("bilibili", account);
       accountsBySite.bilibili[normalizedAccount.id] = normalizedAccount;
     });
-    await setStorage({ [ACCOUNTS_BY_SITE_KEY]: accountsBySite });
+    await persistAccountsBySite(accountsBySite);
   }
 
   return accountsBySite;

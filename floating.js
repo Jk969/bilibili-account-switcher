@@ -278,7 +278,8 @@ async function renderList() {
 
 function renderAvatar(account) {
   const avatarUrl = account.avatar || account.face;
-  if (avatarUrl) {
+  // 仅放行 http(s) 协议，避免 data:/javascript: 等被注入到 <img src>
+  if (avatarUrl && /^https?:\/\//i.test(avatarUrl)) {
     return `<img src="${escapeHtml(avatarUrl)}" class="bili-switcher-avatar" alt="avatar">`;
   }
 

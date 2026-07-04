@@ -26,6 +26,8 @@ const siteFloatingToggle = document.getElementById("siteFloatingToggle");
 
 let currentSite = null;
 let currentTab = null;
+// 当前登录账号 id 缓存：打开 popup 时拉取一次，避免每次渲染都打用户信息接口
+let cachedCurrentAccountId = null;
 
 // 初始化
 document.addEventListener("DOMContentLoaded", async () => {
@@ -33,13 +35,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   currentSite = getSiteByUrl(currentTab?.url);
 
   applySiteState();
+  await loadCurrentAccountId();
   await renderAccountList();
 });
 
 // 事件监听
 addCurrentBtn.addEventListener("click", handleAddAccount);
 loginNewBtn.addEventListener("click", handleLoginNew);
-refreshBtn.addEventListener("click", renderAccountList);
+refreshBtn.addEventListener("click", async () => {
+  await loadCurrentAccountId();
+  await renderAccountList();
+});
 
 settingsBtn.addEventListener("click", openSettings);
 settingsCloseBtn.addEventListener("click", closeSettings);
@@ -62,6 +68,18 @@ function applySiteState() {
 }
 
 /**
+ * 拉取当前登录账号 id 并缓存
+ */
+async function loadCurrentAccountId() {
+  if (!currentSite) {
+    cachedCurrentAccountId = null;
+    return;
+  }
+  const currentUser = await fetchUserInfo(currentSite.id);
+  cachedCurrentAccountId = currentUser ? currentUser.id : null;
+}
+
+/**
  * 渲染账号列表
  */
 async function renderAccountList() {
@@ -75,12 +93,7 @@ async function renderAccountList() {
   const accounts = await getAccounts(currentSite.id);
   const sortedAccounts = Object.values(accounts).sort((a, b) => b.timestamp - a.timestamp);
 
-  // 获取当前正在使用的账号 ID
-  let currentAccountId = null;
-  const currentUser = await fetchUserInfo(currentSite.id);
-  if (currentUser) {
-    currentAccountId = currentUser.id;
-  }
+  const currentAccountId = cachedCurrentAccountId;
 
   if (sortedAccounts.length === 0) {
     accountListEl.innerHTML = `<div class="empty-tip">${currentSite.emptyTip}</div>`;
@@ -205,7 +218,8 @@ function createAccountElement(account, currentAccountId) {
 
 function createAvatarElement(account) {
   const avatarUrl = account.avatar || account.face;
-  if (avatarUrl) {
+  // 仅放行 http(s) 协议，避免 data:/javascript: 等被注入到 <img src>
+  if (avatarUrl && /^https?:\/\//i.test(avatarUrl)) {
     const img = document.createElement("img");
     img.src = avatarUrl;
     img.className = "avatar";
@@ -256,17 +270,11 @@ async function switchAccount(account) {
   showStatus(`正在切换到 ${account.displayName || account.uname}...`);
   try {
     await switchToAccount(currentSite.id, account.id);
+    cachedCurrentAccountId = account.id; // 切换后浏览器即为目标账号
 
-    // 刷新当前页面
-    if (currentTab && currentSite.urlPatterns.some(pattern => currentTab.url.includes(pattern))) {
-      chrome.tabs.reload(currentTab.id);
-    }
-
-    // 重新渲染列表（稍作延迟等待页面刷新/cookie生效）
-    setTimeout(() => {
-      renderAccountList();
-      showStatus(`已切换到 ${account.displayName || account.uname}`, "success");
-    }, 1000);
+    showStatus(`已切换到 ${account.displayName || account.uname}`, "success");
+    // 刷新页面；popup 通常会随之关闭，故不再用延迟重渲染
+    if (currentTab?.id) chrome.tabs.reload(currentTab.id);
   } catch (error) {
     console.error(error);
     showStatus(`切换失败：${error.message || ""}`, "error");
@@ -282,12 +290,9 @@ async function handleLoginNew() {
 
   if (confirm("确定要清除本地状态以登录新账号吗？\n（注意：这不会导致旧账号失效）")) {
     await prepareForNewLogin(currentSite.id);
+    cachedCurrentAccountId = null; // 本地状态已清空
 
-    // 刷新页面
-    if (currentTab && currentSite.urlPatterns.some(pattern => currentTab.url.includes(pattern))) {
-      chrome.tabs.reload(currentTab.id);
-    }
-
+    if (currentTab?.id) chrome.tabs.reload(currentTab.id);
     await renderAccountList();
     showStatus("本地状态已清除，请在网页登录新账号", "success");
   }
