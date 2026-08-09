@@ -165,6 +165,7 @@ export async function renameAccount(siteId, accountId, newName) {
   if (siteAccounts[accountId]) {
     siteAccounts[accountId].displayName = newName;
     siteAccounts[accountId].uname = newName;
+    siteAccounts[accountId]._customName = true; // 标记为用户自定义，重新添加时保留
     accountsBySite[siteId] = siteAccounts;
     await persistAccountsBySite(accountsBySite);
   }
@@ -240,12 +241,15 @@ export async function getSiteCookies(siteId = "bilibili") {
 }
 
 /**
- * 设置 Cookies 到浏览器
+ * 设置 Cookies 到浏览器：先清空该域现有 cookie，再写入目标 cookie。
+ * 切换账号必须清空旧会话，否则旧登录态残留会导致切换不生效。
+ * 注意：传入空数组时不清除——避免误调用导致静默登出（见 switchToAccount 的守卫）。
  * @param {string} siteId - 站点 ID
  * @param {chrome.cookies.Cookie[]} cookies - Cookie 对象数组
  */
 export async function setSiteCookies(siteId = "bilibili", cookies = []) {
   await clearSiteCookies(siteId);
+  if (cookies.length === 0) return;
 
   const promises = cookies.map(cookie => {
     const cookieDetails = buildCookieSetDetails(cookie);
@@ -310,9 +314,24 @@ export async function saveAccount(siteId = "bilibili", account) {
   const accountsBySite = await getAccountsBySite();
   const siteAccounts = accountsBySite[siteId] || {};
   const normalizedAccount = normalizeAccount(siteId, account);
+  const existing = siteAccounts[normalizedAccount.id];
+
+  // 若该账号已存在且用户曾自定义过名称（displayName 与原始 uname 不一致），
+  // 则保留用户的自定义名，不被本次重新抓取的接口数据覆盖。
+  let displayName = normalizedAccount.displayName;
+  let uname = normalizedAccount.uname;
+  if (existing && existing._customName) {
+    displayName = existing.displayName;
+    uname = existing.uname;
+  }
 
   siteAccounts[normalizedAccount.id] = {
     ...normalizedAccount,
+    displayName,
+    uname,
+    // 标记是否为用户自定义名：当调用 renameAccount 后置 true，
+    // 用于下次重新添加时保留自定义名
+    _customName: existing?._customName || false,
     timestamp: Date.now()
   };
 
@@ -346,6 +365,13 @@ export async function deleteAccount(siteId = "bilibili", accountId) {
     accountsBySite[siteId] = siteAccounts;
     await persistAccountsBySite(accountsBySite);
     await recomputeSiteHasAccounts(siteId);
+
+    // 若删除的恰是当前活动账号，清空活动账号记录，
+    // 否则下次 updateCurrentAccountCookies 会把当前页 cookie 回写到已不存在的账号上（无效写入）。
+    const activeId = await getActiveAccountId(siteId);
+    if (activeId === accountId) {
+      await setActiveAccountId(siteId, null);
+    }
   }
 }
 
@@ -419,6 +445,13 @@ export async function switchToAccount(siteId = "bilibili", accountId) {
   const target = accounts[accountId];
   if (!target) throw new Error("未找到目标账号");
 
+  // 目标账号 cookie 缺失/为空时绝不能继续——否则会清空当前登录且无法回退，
+  // 这是数据丢失级别的问题。先回写当前 cookie 保护现场，再抛错让用户感知。
+  if (!target.cookies || target.cookies.length === 0) {
+    await updateCurrentAccountCookies(siteId);
+    throw new Error("该账号的 Cookie 数据缺失，无法切换（请重新添加该账号）");
+  }
+
   await updateCurrentAccountCookies(siteId);
   await setSiteCookies(siteId, target.cookies);
   await setActiveAccountId(siteId, accountId);
@@ -457,6 +490,8 @@ async function getAccountsBySite() {
       saMap.bilibili = true;
       await setStorage({ [SITES_WITH_ACCOUNTS_KEY]: saMap });
     }
+    // 迁移完成后删除旧 key，避免每次读取都重复检测 & 重复写入
+    await chrome.storage.local.remove(LEGACY_BILIBILI_ACCOUNTS_KEY);
   }
 
   return accountsBySite;
@@ -522,12 +557,15 @@ function buildCookieUrl(cookie) {
   return `${protocol}${host}${path}`;
 }
 
-function createCookieOnlyAccount(siteId, cookies, label) {
+export function createCookieOnlyAccount(siteId, cookies, label) {
   if (!cookies || cookies.length === 0) return null;
 
+  // 指纹只取 cookie 的 name/domain/path，**不包含 value**。
+  // 原因：session/auth/token 类 cookie 的 value 会随服务端 token 轮换而变化，
+  // 若把 value 计入指纹，同一账号每次刷新都会被识别成新账号，导致重复添加。
   const fingerprintSource = cookies
-    .filter(cookie => /session|auth|token|cf_clearance/i.test(cookie.name))
-    .map(cookie => `${cookie.domain}|${cookie.path}|${cookie.name}|${cookie.value}`)
+    .filter(cookie => /session|auth|token|cf_clearance|sid|jwt/i.test(cookie.name))
+    .map(cookie => `${cookie.domain}|${cookie.path}|${cookie.name}`)
     .sort()
     .join("\n") || cookies
     .map(cookie => `${cookie.domain}|${cookie.path}|${cookie.name}`)

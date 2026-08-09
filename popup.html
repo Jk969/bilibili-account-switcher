@@ -15,6 +15,11 @@
       </div>
     </header>
 
+    <div id="siteBanner" class="site-banner" style="display: none;">
+      <span class="site-host" id="siteHost"></span>
+      <span class="site-count" id="siteCount"></span>
+    </div>
+
     <div id="accountList" class="account-list">
       <!-- 账号列表动态插入 -->
       <div class="empty-tip">暂无账号，请登录后添加</div>
@@ -38,6 +43,15 @@
         </div>
         <div class="settings-tip">
           提示：悬浮窗默认只在“已保存有账号”的网站上显示，以避免在其他网页浏览时产生视觉干扰。
+        </div>
+        <hr class="settings-divider">
+        <div class="setting-item setting-row">
+          <button id="exportBtn" class="secondary-btn setting-action-btn">导出账号</button>
+          <button id="importBtn" class="secondary-btn setting-action-btn">导入账号</button>
+          <input type="file" id="importFile" accept="application/json" hidden>
+        </div>
+        <div class="settings-tip">
+          导出/导入用于备份或在另一台电脑恢复账号（仅限本地，请勿分享——其中含登录凭据）。
         </div>
       </div>
     </div>

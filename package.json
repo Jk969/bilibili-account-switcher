@@ -1,6 +1,6 @@
 {
   "name": "web-account-switcher",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "多站点账号一键切换浏览器扩展（Manifest V3）",
   "type": "module",

@@ -13,6 +13,12 @@ import {
 
 // 监听来自 content script 或 popup 的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // 只信任本扩展自己的 frame（popup / options / content script）。
+  // 未配置 externally_connectable 时网页本就无法直接发消息，这里再防御一层。
+  if (sender.id && sender.id !== chrome.runtime.id) {
+    sendResponse({ success: false, error: "未授权的调用方" });
+    return false;
+  }
   handleMessage(request, sender).then(sendResponse).catch(error => {
     console.error("Background error:", error);
     sendResponse({ success: false, error: error.message });
@@ -38,6 +44,16 @@ async function handleMessage(request, sender) {
   const siteId = resolveSiteId(request, sender);
   if (!siteId) {
     return { success: false, error: "当前页面暂不支持账号切换" };
+  }
+
+  // 写/删类操作要求来自扩展页面（popup）或本扩展的 content script，
+  // 且 content script 的站点必须与其所在页面对应，避免跨站点误操作。
+  const isContentScript = !!sender?.tab;
+  if (isContentScript) {
+    const senderSite = getSiteByUrl(sender?.tab?.url);
+    if (senderSite && senderSite.id !== siteId) {
+      return { success: false, error: "站点不匹配，已拒绝操作" };
+    }
   }
 
   switch (request.type) {
@@ -99,3 +115,19 @@ function resolveSiteId(request, sender) {
   if (senderSite) return senderSite.id;
   return null;
 }
+
+// 快捷键：Alt+Shift+S 显示/隐藏当前页悬浮球。
+// 注意：若悬浮球尚未注入（如该站点无账号），content script 收到也会忽略。
+chrome.commands?.onCommand?.addListener(async (command) => {
+  if (command !== "toggle-floating") return;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    chrome.tabs.sendMessage(tab.id, { type: "TOGGLE_FLOATING" }, () => {
+      // content script 可能未注入（受限页面），忽略 lastError
+      void chrome.runtime.lastError;
+    });
+  } catch (e) {
+    // 静默
+  }
+});

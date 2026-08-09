@@ -127,7 +127,9 @@
   padding: 10px;
   border-top: 1px solid #e7e7e7;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
 }
 
 .bili-switcher-btn {
@@ -152,6 +154,63 @@
 
 .bili-switcher-btn:hover {
   opacity: 0.9;
+}
+
+/* 图标按钮（刷新页等），与主/次按钮区分 */
+.bili-switcher-btn-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  padding: 6px 0;
+  font-size: 14px;
+  background: #f4f5f7;
+  color: #666;
+}
+
+.bili-switcher-footer .bili-switcher-btn-primary,
+.bili-switcher-footer .bili-switcher-btn-secondary {
+  flex: 1;
+}
+
+/* 自定义确认弹窗 */
+.bili-switcher-confirm {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 12px;
+  box-sizing: border-box;
+  animation: slideIn 0.15s ease-out;
+}
+
+.bili-switcher-confirm-box {
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px;
+  width: 100%;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+
+.bili-switcher-confirm-msg {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  word-break: break-word;
+}
+
+.bili-switcher-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.bili-switcher-confirm-actions .bili-switcher-btn {
+  flex: 0 0 auto;
+  min-width: 56px;
+  padding: 6px 14px;
 }
 
 .bili-switcher-close {
@@ -240,4 +299,39 @@
 
 .bili-switcher-status.error {
   color: #ff4d4f;
+}
+
+/* 深色模式适配：跟随系统 */
+@media (prefers-color-scheme: dark) {
+  .bili-switcher-panel,
+  .bili-switcher-confirm-box {
+    background: #2b2b2b;
+    border-color: #3a3a3a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+  .bili-switcher-header {
+    background: #1f1f1f;
+    border-bottom-color: #3a3a3a;
+    color: #e6e6e6;
+  }
+  .bili-switcher-item {
+    color: #ddd;
+  }
+  .bili-switcher-item:hover {
+    background: #3a3a3a;
+  }
+  .bili-switcher-uid {
+    color: #888;
+  }
+  .bili-switcher-btn-secondary,
+  .bili-switcher-btn-icon {
+    background: #3a3a3a;
+    color: #ccc;
+  }
+  .bili-switcher-close {
+    color: #aaa;
+  }
+  .bili-switcher-empty {
+    color: #888;
+  }
 }

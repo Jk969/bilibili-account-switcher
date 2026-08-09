@@ -6,20 +6,23 @@ A Manifest V3 Edge / Chrome browser extension that lets you switch between **mul
 
 It ships with deep support for Bilibili and ChatGPT (reading username, avatar, and UID), while offering generic cookie-based switching for any other website. All data stays in your local browser — nothing is uploaded to any server.
 
-> Current version: **v1.2**
+> Current version: **v1.2.1**
 
 ---
 
 ## Features
 
-- **One-click switching**: Click an account card to write its cookies and reload the page — you're back on the target account in seconds.
+- **One-click switching**: Click an account card to write its cookies and reload the page — you're back on the target account in seconds. All same-site tabs are reloaded together so multi-tab sessions stay consistent.
 - **Multi-site support**: Bilibili and ChatGPT built in; other sites are auto-detected and switched by cookie.
 - **Account renaming**: Every account can be given a custom display name for easy distinction.
 - **Auto info fetch**: Automatically grabs the currently logged-in account's user info and cookies.
-- **Cookie-freshness protection**: Before switching or logging into a new account, the current account's latest cookies are written back and saved.
+- **Cookie-freshness protection**: Before switching or logging into a new account, the current account's latest cookies are written back and saved. Empty/invalid cookie data is rejected so a switch can never silently log you out with no way back.
 - **Secure storage**: Account data lives only in `chrome.storage.local`. The code is open source with no backend whatsoever.
 - **Dual entry points**: Use the toolbar popup or the floating panel in the bottom-right corner of any page.
-- **Controllable floating panel**: The floating panel can be toggled globally or per-site, supports dragging, and by default appears only on sites with saved accounts.
+- **Controllable floating panel**: Toggle globally or per-site, supports dragging (snaps back into the viewport on resize), click outside to close, and hide it for the current site right from the panel.
+- **Backup & restore**: Export/import all accounts as a JSON file from the settings panel.
+- **Dark mode**: Follows your system theme.
+- **Keyboard shortcut**: `Alt+Shift+S` shows or hides the floating switcher on the current page.
 
 ---
 

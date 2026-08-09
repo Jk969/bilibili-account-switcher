@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "账号切换助手",
-  "version": "1.2",
-  "description": "支持多站点账号一键切换及账号名称修改",
+  "version": "1.2.1",
+  "description": "支持多站点账号一键切换及账号名称修改（Bilibili / ChatGPT 及任意网站）",
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",
@@ -24,6 +24,14 @@
       "16": "assets/icon16.png",
       "48": "assets/icon48.png",
       "128": "assets/icon128.png"
+    }
+  },
+  "commands": {
+    "toggle-floating": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "显示/隐藏当前页的账号切换悬浮球"
     }
   },
   "background": {
